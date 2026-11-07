@@ -2,7 +2,11 @@
 
 Juego de tres en raya para la terminal, sin dependencias (Python 3.8+).
 
-## Cómo jugar
+## Versión para el navegador (la más fácil)
+
+Descarga `tres_en_raya.html` y ábrelo con doble clic. Se juega con el ratón (o con las teclas 1–9) y no hace falta instalar nada.
+
+## Versión para la terminal
 
 ```bash
 python3 tres_en_raya.py

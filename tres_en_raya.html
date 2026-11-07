@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html,body{height:100%}body{margin:0}[hidden]{display:none!important}</style>
+<title>Tres en raya</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: una hoja de cuaderno de cuadros. Tablero a lápiz en el centro,
+   ajustes arriba como fichas, marcador con palotes debajo. */
+:root {
+  --paper: #fbfcf8;
+  --grid: #dbe5f1;
+  --ink: #22304a;
+  --pencil: #44536c;
+  --muted: #627089;
+  --x: #c2412d;
+  --o: #1d5ca6;
+  --rule: #e3a0a0;
+  --chip: #eef2f8;
+  --chip-on: #22304a;
+  --chip-on-fg: #fbfcf8;
+  --hand: "Caveat", "Segoe Print", "Comic Sans MS", cursive;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #151b25; --grid: #222d3d; --ink: #e3e8f0; --pencil: #aab6c8; --muted: #8d9ab0;
+    --x: #ff8d72; --o: #82b6ff; --rule: #7a3e48; --chip: #1f2836; --chip-on: #e3e8f0; --chip-on-fg: #151b25;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #151b25; --grid: #222d3d; --ink: #e3e8f0; --pencil: #aab6c8; --muted: #8d9ab0;
+  --x: #ff8d72; --o: #82b6ff; --rule: #7a3e48; --chip: #1f2836; --chip-on: #e3e8f0; --chip-on-fg: #151b25;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+  min-height: 100%;
+}
+main { max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+
+header { border-bottom: 2px solid var(--rule); padding-bottom: 6px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--hand); font-weight: 700; font-size: 44px; line-height: 1; margin: 0; text-wrap: balance; }
+h1 .x { color: var(--x); } h1 .o { color: var(--o); }
+.hint { color: var(--muted); font-size: 13px; }
+
+.settings { display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
+.label { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); min-width: 64px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font: inherit; font-size: 14px; padding: 5px 12px; border-radius: 999px; cursor: pointer;
+  background: var(--chip); color: var(--ink); border: 1px solid var(--grid);
+}
+.chip[aria-pressed="true"] { background: var(--chip-on); color: var(--chip-on-fg); border-color: var(--chip-on); }
+.chip:focus-visible, .cell:focus-visible, .btn:focus-visible { outline: 2px dashed var(--o); outline-offset: 3px; }
+
+.board-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.status { font-family: var(--hand); font-size: 30px; font-weight: 700; min-height: 1.2em; text-align: center; }
+.status .x { color: var(--x); } .status .o { color: var(--o); }
+.note { font-size: 14px; color: var(--muted); min-height: 1.45em; text-align: center; }
+
+.board { position: relative; width: min(100%, 340px); aspect-ratio: 1; max-width: 100%;
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+.board svg.overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.board .lines path { fill: none; stroke: var(--pencil); stroke-width: 3; stroke-linecap: round; }
+.cell { position: relative; background: transparent; border: 0; padding: 12%; cursor: pointer; border-radius: 8px; color: inherit; }
+.cell:disabled { cursor: default; }
+.cell:not(:disabled):hover { background: color-mix(in srgb, var(--grid) 45%, transparent); }
+.cell .num { position: absolute; top: 6px; left: 8px; font-size: 11px; color: var(--muted); opacity: .7; }
+.cell svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.cell path { fill: none; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .28s ease-out forwards; }
+.cell path + path { animation-delay: .16s; }
+.cell .mx path { stroke: var(--x); } .cell .mo path { stroke: var(--o); }
+.winline { fill: none; stroke: var(--ink); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .4s ease-out .15s forwards; opacity: .85; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+.actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.btn { font: inherit; font-weight: 700; font-size: 15px; padding: 9px 18px; border-radius: 10px; cursor: pointer; border: 2px solid var(--ink); }
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--grid); font-weight: 400; }
+
+.score { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; border-top: 2px solid var(--rule); padding-top: 12px; }
+.score > div { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.score .who { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.score .n { font-family: var(--hand); font-size: 38px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.score .tally { min-height: 26px; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.score .tally svg { width: 30px; height: 24px; }
+.score .tally path { fill: none; stroke: var(--pencil); stroke-width: 2.2; stroke-linecap: round; }
+.score .s-x .n { color: var(--x); } .score .s-o .n { color: var(--o); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cell path, .winline { animation: none; stroke-dashoffset: 0; }
+}
+</style>
+</head>
+<body>
+
+<main>
+  <header>
+    <h1>Tres en <span class="x">r</span>a<span class="o">y</span>a</h1>
+    <span class="hint">Teclas 1–9 para jugar · N para nueva partida</span>
+  </header>
+
+  <section class="settings" aria-label="Ajustes">
+    <div class="row">
+      <span class="label" id="lbl-modo">Modo</span>
+      <div class="chips" role="group" aria-labelledby="lbl-modo" id="modo">
+        <button class="chip" id="modo-ia" data-v="ia">Contra la IA</button>
+        <button class="chip" id="modo-local" data-v="local">Dos jugadores</button>
+      </div>
+    </div>
+    <div class="row" id="fila-nivel">
+      <span class="label" id="lbl-nivel">Nivel</span>
+      <div class="chips" role="group" aria-labelledby="lbl-nivel" id="nivel">
+        <button class="chip" id="nivel-1" data-v="1">Fácil</button>
+        <button class="chip" id="nivel-2" data-v="2">Medio</button>
+        <button class="chip" id="nivel-3" data-v="3">Difícil</button>
+        <button class="chip" id="nivel-4" data-v="4">Imbatible</button>
+        <button class="chip" id="nivel-5" data-v="5">Adaptativa</button>
+      </div>
+    </div>
+    <div class="row" id="fila-ficha">
+      <span class="label" id="lbl-ficha">Juegas con</span>
+      <div class="chips" role="group" aria-labelledby="lbl-ficha" id="ficha">
+        <button class="chip" id="ficha-x" data-v="X">X</button>
+        <button class="chip" id="ficha-o" data-v="O">O</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="board-wrap">
+    <div class="status" id="status" aria-live="polite"></div>
+    <div class="board" id="board">
+      <svg class="overlay lines" viewBox="0 0 300 300" aria-hidden="true">
+        <path d="M100 8 C 98 100, 103 200, 100 292"/>
+        <path d="M200 6 C 202 110, 197 190, 201 294"/>
+        <path d="M8 101 C 100 98, 200 104, 292 99"/>
+        <path d="M6 199 C 110 202, 190 196, 294 201"/>
+      </svg>
+      <svg class="overlay" id="win" viewBox="0 0 300 300" aria-hidden="true"></svg>
+    </div>
+    <div class="note" id="note" aria-live="polite"></div>
+    <div class="actions">
+      <button class="btn primary" id="nueva">Nueva partida</button>
+      <button class="btn ghost" id="reset">Borrar marcador</button>
+    </div>
+  </section>
+
+  <section class="score" aria-label="Marcador">
+    <div class="s-x"><span class="who" id="who-a"></span><span class="n" id="n-a">0</span><span class="tally" id="t-a"></span></div>
+    <div><span class="who">Empates</span><span class="n" id="n-e">0</span><span class="tally" id="t-e"></span></div>
+    <div class="s-o"><span class="who" id="who-b"></span><span class="n" id="n-b">0</span><span class="tally" id="t-b"></span></div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  // Probabilidad de jugar el movimiento perfecto en cada nivel (igual que la versión de terminal).
+  const LEVELS = { 1: ["Fácil", 0.25], 2: ["Medio", 0.60], 3: ["Difícil", 0.85], 4: ["Imbatible", 1.0] };
+  const other = f => (f === "X" ? "O" : "X");
+  const $ = id => document.getElementById(id);
+
+  function result(b) {
+    for (const l of LINES) {
+      const [a, c, d] = l;
+      if (b[a] && b[a] === b[c] && b[a] === b[d]) return { who: b[a], line: l };
+    }
+    return b.includes("") ? null : { who: "empate" };
+  }
+  const free = b => b.reduce((acc, c, i) => (c ? acc : acc.concat(i)), []);
+  const put = (b, i, f) => { const n = b.slice(); n[i] = f; return n; };
+
+  // ---- IA: minimax con memoria ----
+  const memo = new Map();
+  function minimax(b, turn, me) {
+    const key = b.map(c => c || "-").join("") + turn + me;
+    if (memo.has(key)) return memo.get(key);
+    const r = result(b), libres = free(b).length;
+    let v;
+    if (r) v = r.who === me ? 10 + libres : r.who === "empate" ? 0 : -10 - libres;
+    else {
+      const s = free(b).map(i => minimax(put(b, i, turn), other(turn), me));
+      v = turn === me ? Math.max(...s) : Math.min(...s);
+    }
+    memo.set(key, v);
+    return v;
+  }
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  function aiMove(b, f, level) {
+    const libres = free(b);
+    if (libres.length === 9) return pick(level >= 3 ? [4, 0, 2, 6, 8] : libres);
+    if (Math.random() < LEVELS[level][1]) {
+      const sc = libres.map(i => [i, minimax(put(b, i, f), other(f), f)]);
+      const best = Math.max(...sc.map(s => s[1]));
+      return pick(sc.filter(s => s[1] === best).map(s => s[0]));
+    }
+    if (level >= 2) {
+      // Aun fallando, remata si puede y tapa si va a perder: como una persona atenta.
+      for (const i of libres) if (result(put(b, i, f))?.who === f) return i;
+      for (const i of libres) if (result(put(b, i, other(f)))?.who === other(f)) return i;
+    }
+    return pick(libres);
+  }
+
+  // ---- Estado ----
+  const S = {
+    mode: "ia", level: 5, adaptive: 2, human: "X",
+    board: Array(9).fill(""), turn: "X", starter: "X", over: false,
+    score: { X: 0, O: 0, E: 0 }, note: ""
+  };
+  let aiTimer = null;
+  const currentLevel = () => (S.level === 5 ? S.adaptive : S.level);
+  const isAITurn = () => S.mode === "ia" && !S.over && S.turn !== S.human;
+
+  // ---- Dibujo ----
+  const MARK = {
+    X: '<svg viewBox="0 0 100 100" class="mx"><path pathLength="1" d="M22 20 C 40 40, 60 58, 80 80"/><path pathLength="1" d="M79 21 C 60 40, 42 60, 21 79"/></svg>',
+    O: '<svg viewBox="0 0 100 100" class="mo"><path pathLength="1" d="M52 18 C 74 17, 85 35, 82 53 C 79 73, 63 84, 47 82 C 28 80, 17 64, 19 46 C 21 30, 34 19, 56 21"/></svg>'
+  };
+  const cells = [];
+  for (let i = 0; i < 9; i++) {
+    const c = document.createElement("button");
+    c.className = "cell"; c.id = "c" + i; c.dataset.mark = "";
+    c.innerHTML = `<span class="num">${i + 1}</span>`;
+    c.addEventListener("click", () => play(i));
+    $("board").insertBefore(c, $("win"));
+    cells.push(c);
+  }
+
+  function tally(n) {
+    const shown = Math.min(n, 20), out = [];
+    for (let g = 0; g < shown; g += 5) {
+      const k = Math.min(5, shown - g);
+      let p = "";
+      for (let s = 0; s < Math.min(k, 4); s++) p += `<path d="M${5 + s * 6} 3 L${4 + s * 6} 21"/>`;
+      if (k === 5) p += `<path d="M1 16 L28 7"/>`;
+      out.push(`<svg viewBox="0 0 30 24" aria-hidden="true">${p}</svg>`);
+    }
+    return out.join("");
+  }
+
+  const fichaHTML = f => `<span class="${f.toLowerCase()}">${f}</span>`;
+
+  function render() {
+    // Ajustes
+    for (const b of $("modo").children) b.setAttribute("aria-pressed", b.dataset.v === S.mode);
+    for (const b of $("nivel").children) b.setAttribute("aria-pressed", +b.dataset.v === S.level);
+    for (const b of $("ficha").children) b.setAttribute("aria-pressed", b.dataset.v === S.human);
+    $("fila-nivel").hidden = $("fila-ficha").hidden = S.mode !== "ia";
+
+    // Tablero
+    S.board.forEach((m, i) => {
+      const c = cells[i];
+      if (c.dataset.mark !== m) {
+        c.dataset.mark = m;
+        c.innerHTML = m ? MARK[m] : `<span class="num">${i + 1}</span>`;
+      }
+      c.disabled = !!m || S.over || isAITurn();
+      c.setAttribute("aria-label", `Casilla ${i + 1}${m ? ": " + m : ""}`);
+    });
+
+    const r = result(S.board);
+    $("win").innerHTML = "";
+    if (r && r.line) {
+      const p = i => [(i % 3) * 100 + 50, Math.floor(i / 3) * 100 + 50];
+      const [x1, y1] = p(r.line[0]), [x2, y2] = p(r.line[2]);
+      const dx = (x2 - x1) * 0.18, dy = (y2 - y1) * 0.18;
+      $("win").innerHTML = `<path class="winline" pathLength="1" d="M${x1 - dx} ${y1 - dy} L${x2 + dx} ${y2 + dy}"/>`;
+    }
+
+    // Estado
+    let st;
+    if (r) {
+      if (r.who === "empate") st = "Empate";
+      else if (S.mode === "local") st = `Gana ${fichaHTML(r.who)}`;
+      else st = r.who === S.human ? "¡Has ganado!" : "Gana la IA";
+    } else if (S.mode === "local") st = `Turno de ${fichaHTML(S.turn)}`;
+    else st = S.turn === S.human ? `Tu turno (${fichaHTML(S.human)})` : "La IA está pensando…";
+    $("status").innerHTML = st;
+
+    let note = S.note;
+    if (!note && S.mode === "ia") note = `IA en nivel ${LEVELS[currentLevel()][0]}${S.level === 5 ? " (se ajusta a cómo juegas)" : ""}`;
+    $("note").textContent = note;
+
+    // Marcador
+    const ia = S.mode === "ia";
+    const a = ia ? S.human : "X", b = ia ? other(S.human) : "O";
+    $("who-a").textContent = ia ? "Tú" : "Jugador X";
+    $("who-b").textContent = ia ? "IA" : "Jugador O";
+    document.querySelector(".score > div:first-child").className = "s-" + a.toLowerCase();
+    document.querySelector(".score > div:last-child").className = "s-" + b.toLowerCase();
+    $("n-a").textContent = S.score[a]; $("t-a").innerHTML = tally(S.score[a]);
+    $("n-b").textContent = S.score[b]; $("t-b").innerHTML = tally(S.score[b]);
+    $("n-e").textContent = S.score.E;  $("t-e").innerHTML = tally(S.score.E);
+  }
+
+  // ---- Juego ----
+  function finish(r) {
+    S.over = true;
+    S.score[r.who === "empate" ? "E" : r.who]++;
+    S.note = "";
+    if (S.mode === "ia" && S.level === 5) {
+      const before = S.adaptive, aiF = other(S.human);
+      if (r.who === S.human) S.adaptive = Math.min(4, S.adaptive + 1);
+      else if (r.who === aiF) S.adaptive = Math.max(1, S.adaptive - 1);
+      if (S.adaptive > before) S.note = `¡Bien jugado! La IA sube a ${LEVELS[S.adaptive][0]}.`;
+      else if (S.adaptive < before) S.note = `La IA baja a ${LEVELS[S.adaptive][0]} para ponértelo más justo.`;
+      else if (r.who === "empate") S.note = `Ritmo igualado: la IA sigue en ${LEVELS[S.adaptive][0]}.`;
+    }
+    S.starter = other(S.starter); // la próxima empieza el otro
+  }
+
+  function play(i, fromAI = false) {
+    if (S.over || S.board[i]) return;
+    if (!fromAI && isAITurn()) return;
+    S.board = put(S.board, i, S.turn);
+    const r = result(S.board);
+    if (r) finish(r); else S.turn = other(S.turn);
+    render();
+    maybeAI();
+  }
+
+  function maybeAI() {
+    clearTimeout(aiTimer);
+    if (!isAITurn()) return;
+    aiTimer = setTimeout(() => play(aiMove(S.board, S.turn, currentLevel()), true), 420 + Math.random() * 300);
+  }
+
+  function newGame() {
+    clearTimeout(aiTimer);
+    S.board = Array(9).fill(""); S.turn = S.starter; S.over = false; S.note = "";
+    render(); maybeAI();
+  }
+  const resetScore = () => { S.score = { X: 0, O: 0, E: 0 }; S.starter = "X"; S.adaptive = 2; };
+
+  // ---- Controles ----
+  $("modo").addEventListener("click", e => {
+    const v = e.target.dataset?.v; if (!v || v === S.mode) return;
+    S.mode = v; resetScore(); newGame();
+  });
+  $("nivel").addEventListener("click", e => {
+    const v = +e.target.dataset?.v; if (!v || v === S.level) return;
+    S.level = v; if (v === 5) S.adaptive = 2; newGame();
+  });
+  $("ficha").addEventListener("click", e => {
+    const v = e.target.dataset?.v; if (!v || v === S.human) return;
+    S.human = v; resetScore(); newGame();
+  });
+  $("nueva").addEventListener("click", newGame);
+  $("reset").addEventListener("click", () => { resetScore(); newGame(); });
+  document.addEventListener("keydown", e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (/^[1-9]$/.test(e.key)) play(+e.key - 1);
+    else if (e.key === "n" || e.key === "N") newGame();
+  });
+
+  // Conserva la partida si la página se actualiza mientras juegas.
+  window.claude?.hot?.snapshot?.(() => JSON.parse(JSON.stringify(S)));
+  function start(saved) {
+    if (saved && Array.isArray(saved.board)) Object.assign(S, saved);
+    render(); maybeAI();
+  }
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>
